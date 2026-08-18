@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Run Log</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f1f5f9; min-height: 100vh; }
+
+    .header { background: #0f172a; color: #fff; text-align: center; padding: 36px 24px 28px; }
+    .header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 10px; }
+    .header .subtitle {
+      font-size: 0.88rem; color: #94a3b8;
+      display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .header .dot { color: #475569; }
+    .header .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600; color: #fff; background: #ef4444;
+    }
+    .counts { display: flex; justify-content: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+    .container { max-width: 1100px; margin: 32px auto; padding: 0 24px 48px; }
+
+    .section-row { margin: 20px 0 8px; }
+    .section-label {
+      font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #64748b;
+    }
+
+    .log-row {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: #fff; border-radius: 8px; padding: 13px 18px;
+      margin-bottom: 6px; border-left: 4px solid #e2e8f0;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .log-row.ok   { border-left-color: #22c55e; }
+    .log-row.info { border-left-color: #3b82f6; }
+    .log-row.warn { border-left-color: #f59e0b; }
+    .log-row.fail { border-left-color: #ef4444; }
+
+    .ts { font-family: 'Consolas', monospace; font-size: 0.78rem; color: #94a3b8; min-width: 62px; padding-top: 2px; flex-shrink: 0; }
+    .icon { width: 22px; height: 22px; flex-shrink: 0; margin-top: 1px; }
+    .icon svg { width: 22px; height: 22px; }
+    .msg { font-size: 0.875rem; color: #1e293b; line-height: 1.55; flex: 1; }
+
+    pre.err-pre {
+      margin-top: 6px; padding: 8px 12px; background: #fff1f2;
+      border-left: 3px solid #fca5a5; color: #b91c1c;
+      font-size: 0.78rem; font-family: monospace; white-space: pre-wrap;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .error-block {
+      background: #fff1f2; border: 1px solid #fecaca;
+      border-left: 4px solid #ef4444; border-radius: 8px;
+      margin-bottom: 6px; overflow: hidden;
+    }
+    .error-block-header { display: flex; align-items: center; gap: 14px; padding: 10px 18px; background: #fee2e2; }
+    .error-title { font-size: 0.85rem; font-weight: 700; color: #991b1b; flex: 1; }
+    .error-block-body {
+      padding: 12px 18px; font-size: 0.78rem;
+      font-family: 'Consolas', 'Cascadia Code', monospace;
+      color: #7f1d1d; white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+    }
+    .error-snippet {
+      padding: 10px 18px 0; font-size: 0.8rem; color: #991b1b;
+    }
+    .error-snippet pre {
+      margin-top: 4px; padding: 8px 12px; background: #fee2e2;
+      border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 0.76rem;
+    }
+    .error-attachments {
+      padding: 10px 18px 12px; font-size: 0.8rem; color: #991b1b;
+    }
+    .error-attachments ul { margin-top: 4px; padding-left: 18px; }
+    .error-attachments li { font-family: monospace; font-size: 0.76rem; margin-top: 2px; }
+
+    .footer { text-align: center; margin-top: 32px; font-size: 0.82rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Test Run Log</h1>
+    <div class="subtitle">
+      <span>Playwright</span><span class="dot">·</span>
+      <span>2 tests</span><span class="dot">·</span>
+      <span>5/26/2026, 9:11:37 AM</span><span class="dot">·</span>
+      <span class="badge">FAILED</span>
+    </div>
+    <div class="counts">
+      <span style="background:#dcfce7;color:#16a34a;padding:2px 10px;border-radius:999px;font-size:0.76rem;font-weight:600;">57 passed</span>
+      <span style="background:#dbeafe;color:#2563eb;padding:2px 10px;border-radius:999px;font-size:0.76rem;font-weight:600;">2 info</span>
+      
+      <span style="background:#fee2e2;color:#dc2626;padding:2px 10px;border-radius:999px;font-size:0.76rem;font-weight:600;">2 failed</span>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <div class="section-row"><span class="section-label">▶ login and select company</span></div>
+    <div class="log-row ok">
+      <span class="ts">09:11:45</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Logged in as kapila.h@jinasena.com.lk</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:45</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Company switched to: Jinasena Agricultural Machinery (Pvt) Ltd</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:46</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Developer mode activated</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:46</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Screenshot saved to test-results/login-company.png</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:46</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Session saved to playwright/.auth/user.json</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:47</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ PASSED — login and select company (8534ms)</span>
+    </div>
+    <div class="section-row"><span class="section-label">▶ Stock Adjustment &amp; Sale order creation</span></div>
+    <div class="log-row ok">
+      <span class="ts">09:11:53</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Odoo main dashboard opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:55</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Inventory app opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:57</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Products list opened</span>
+    </div>
+    <div class="log-row info">
+      <span class="ts">09:11:57</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dbeafe"/><path d="M10 9.5v4" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="7" r="0.9" fill="#2563eb"/></svg></span>
+      <span class="msg">ℹ No active filters to clear</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:57</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Product code read from file: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:11:58</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Search applied for: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:01</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Product form opened: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:03</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ On Hand stock list opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:04</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ New record row created</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:05</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Location set to: BR-EK/Stock</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:06</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Serial number: PW_Test-0013 → PW_Test-0014</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:07</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Lot/Serial Number created: PW_Test-0014</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:09</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Record saved</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:10</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Inventory adjustment icon clicked</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:11</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Screenshot saved to test-results/stock-sale.png</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:11</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Serial.txt saved: PW_Test-0014</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:14</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Sales app opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:16</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Sales Orders list opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:18</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ New sale order form opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:20</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Customer set to: PlayWright Customer</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:21</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Quotation Type set to: sales</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:22</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Other Info tab opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:25</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Warehouse set to: Branch Warehouse - Ekala(BR-EK)</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:27</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Order Lines tab opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:28</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Add a product clicked</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:29</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Product selected: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:32</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Sale order saved — screenshot: test-results/sale-order.png</span>
+    </div>
+    <div class="log-row fail">
+      <span class="ts">09:12:42</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#fee2e2"/><path d="M7 7l6 6M13 7l-6 6" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <span class="msg">✘ FAILED — Stock Adjustment &amp; Sale order creation (52300ms)</span>
+    </div>
+    <div class="error-block">
+      <div class="error-block-header">
+        <span class="ts">09:12:42</span>
+        <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#fee2e2"/><path d="M7 7l6 6M13 7l-6 6" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <span class="error-title">Error</span>
+      </div>
+      <pre class="error-block-body">Error: expect(locator).toBeVisible() failed
+
+Locator: locator('.o_statusbar_buttons, .o_control_panel_actions').getByRole('button', { name: 'Confirm' }).first()
+Expected: visible
+Timeout: 8000ms
+Error: element(s) not found
+
+Call log:
+  - Expect "toBeVisible" with timeout 8000ms
+  - waiting for locator('.o_statusbar_buttons, .o_control_panel_actions').getByRole('button', { name: 'Confirm' }).first()
+
+    at D:\Github\playwright_repair_tests\tests\stock-sale.spec.ts:248:28
+
+── Failed steps ──
+[step] Expect "toBeVisible" locator('.o_statusbar_buttons, .o_control_panel_actions').getByRole('button', { name: 'Confirm' }).first(): Error: expect(locator).toBeVisible() failed</pre>
+      <div class="error-snippet"><strong>Source:</strong><pre>246 |   const confirmBtn = page.locator('.o_statusbar_buttons, .o_control_panel_actions')
+  247 |     .getByRole('button', { name: 'Confirm' }).first();
+&gt; 248 |   await expect(confirmBtn).toBeVisible({ timeout: 8_000 });
+      |                            ^
+  249 |   await confirmBtn.click();
+  250 |   await page.waitForTimeout(2_000);
+  251 |   await dismissAnyModal(page);</pre></div><div class="error-attachments"><strong>Attachments:</strong><ul><li>[screenshot] D:\Github\playwright_repair_tests\test-results\stock-sale-Stock-Adjustment-Sale-order-creation-chromium\test-failed-1.png</li></ul></div>
+    </div>
+    <div class="section-row"><span class="section-label">▶ Stock Adjustment &amp; Sale order creation</span></div>
+    <div class="log-row ok">
+      <span class="ts">09:12:48</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Odoo main dashboard opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:50</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Inventory app opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:52</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Products list opened</span>
+    </div>
+    <div class="log-row info">
+      <span class="ts">09:12:52</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dbeafe"/><path d="M10 9.5v4" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="7" r="0.9" fill="#2563eb"/></svg></span>
+      <span class="msg">ℹ No active filters to clear</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:52</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Product code read from file: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:54</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Search applied for: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:12:58</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Product form opened: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:00</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ On Hand stock list opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:02</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ New record row created</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:04</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Location set to: BR-EK/Stock</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:04</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Serial number: PW_Test-0014 → PW_Test-0015</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:06</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Lot/Serial Number created: PW_Test-0015</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:08</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Record saved</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:09</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Inventory adjustment icon clicked</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:10</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Screenshot saved to test-results/stock-sale.png</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:10</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Serial.txt saved: PW_Test-0015</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:17</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Sales app opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:23</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Sales Orders list opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:25</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ New sale order form opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:28</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Customer set to: PlayWright Customer</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:29</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Quotation Type set to: sales</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:30</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Other Info tab opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:33</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Warehouse set to: Branch Warehouse - Ekala(BR-EK)</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:35</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Order Lines tab opened</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:36</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Add a product clicked</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:38</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Product selected: JMC6</span>
+    </div>
+    <div class="log-row ok">
+      <span class="ts">09:13:40</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#dcfce7"/><path d="M6 10.5l3 3 5-5.5" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="msg">✓ Sale order saved — screenshot: test-results/sale-order.png</span>
+    </div>
+    <div class="log-row fail">
+      <span class="ts">09:14:15</span>
+      <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#fee2e2"/><path d="M7 7l6 6M13 7l-6 6" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <span class="msg">✘ FAILED — Stock Adjustment &amp; Sale order creation (78666ms)</span>
+    </div>
+    <div class="error-block">
+      <div class="error-block-header">
+        <span class="ts">09:14:15</span>
+        <span class="icon"><svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="#fee2e2"/><path d="M7 7l6 6M13 7l-6 6" stroke="#dc2626" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <span class="error-title">Error</span>
+      </div>
+      <pre class="error-block-body">Error: expect(locator).toBeVisible() failed
+
+Locator: locator('.o_statusbar_buttons, .o_control_panel_actions').getByRole('button', { name: 'Confirm' }).first()
+Expected: visible
+Timeout: 8000ms
+Error: element(s) not found
+
+Call log:
+  - Expect "toBeVisible" with timeout 8000ms
+  - waiting for locator('.o_statusbar_buttons, .o_control_panel_actions').getByRole('button', { name: 'Confirm' }).first()
+
+    at D:\Github\playwright_repair_tests\tests\stock-sale.spec.ts:248:28
+
+── Failed steps ──
+[step] Expect "toBeVisible" locator('.o_statusbar_buttons, .o_control_panel_actions').getByRole('button', { name: 'Confirm' }).first(): Error: expect(locator).toBeVisible() failed</pre>
+      <div class="error-snippet"><strong>Source:</strong><pre>246 |   const confirmBtn = page.locator('.o_statusbar_buttons, .o_control_panel_actions')
+  247 |     .getByRole('button', { name: 'Confirm' }).first();
+&gt; 248 |   await expect(confirmBtn).toBeVisible({ timeout: 8_000 });
+      |                            ^
+  249 |   await confirmBtn.click();
+  250 |   await page.waitForTimeout(2_000);
+  251 |   await dismissAnyModal(page);</pre></div><div class="error-attachments"><strong>Attachments:</strong><ul><li>[screenshot] D:\Github\playwright_repair_tests\test-results\stock-sale-Stock-Adjustment-Sale-order-creation-chromium-retry1\test-failed-1.png</li><li>[video] D:\Github\playwright_repair_tests\test-results\stock-sale-Stock-Adjustment-Sale-order-creation-chromium-retry1\video.webm</li><li>[trace] D:\Github\playwright_repair_tests\test-results\stock-sale-Stock-Adjustment-Sale-order-creation-chromium-retry1\trace.zip</li></ul></div>
+    </div>
+    <div class="footer">159.9s total elapsed</div>
+  </div>
+</body>
+</html>

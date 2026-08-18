@@ -1,0 +1,81 @@
+{
+  "cookies": [
+    {
+      "name": "frontend_lang",
+      "value": "en_US",
+      "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
+      "path": "/",
+      "expires": 1818149725.96829,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "tz",
+      "value": "Asia/Colombo",
+      "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "im_livechat_history",
+      "value": "[\"/web/login\"]",
+      "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
+      "path": "/",
+      "expires": 1786700127.394586,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "session_id",
+      "value": "246374c08df5cfddd945208c9e3b2519775ecc5d",
+      "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
+      "path": "/",
+      "expires": 1787218528.927624,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "cids",
+      "value": "2",
+      "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
+      "path": "/",
+      "expires": 1818149730.468088,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
+      "localStorage": [
+        {
+          "name": "multi_tab.https_rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com.lastPresenceByTab",
+          "value": "{}"
+        },
+        {
+          "name": "presence.lastPresence",
+          "value": "1786613727436"
+        },
+        {
+          "name": "multi_tab.https_rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com.main",
+          "value": "true"
+        },
+        {
+          "name": "multi_tab.https_rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com.heartbeat",
+          "value": "1786613731971"
+        },
+        {
+          "name": "presence.focus",
+          "value": "true"
+        }
+      ]
+    }
+  ]
+}
