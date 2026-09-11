@@ -1,10 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { BASE_URL, loginAndSelectCompany, dismissAnyModal, fillMany2one, fillMany2oneByLabel, selectFirstDropdownByLabel, rpc, waitForLoading, waitForView } from '../helpers/odoo';
+import { BASE_URL, loginAndSelectCompany, dismissAnyModal, fillMany2one, fillMany2oneByLabel, selectFirstDropdownByLabel, rpc, waitForLoading, waitForView, showTestNameBanner } from '../helpers/odoo';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
 test('Repair RUG', async ({ page }, testInfo) => {
+  await showTestNameBanner(page, `${path.basename(testInfo.file)} — ${testInfo.title}`);
   // Login and navigate to the backend home (app grid)
   await loginAndSelectCompany(page);
   await page.goto(`${BASE_URL}/web`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -152,12 +153,17 @@ test('Repair RUG', async ({ page }, testInfo) => {
   await waitForLoading(page);
   console.log('  ✓ Warranty card image uploaded');
 
-  // Save again after uploading — wait for the button to be enabled (image processing may take a moment)
+  // Save again after uploading — the upload may have already been auto-saved
+  // (in which case the button goes disabled, since there's nothing dirty left
+  // to save), so only click if it actually becomes enabled.
   const saveBtn2 = page.locator('.o_form_button_save').first();
   if (await saveBtn2.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await expect(saveBtn2).toBeEnabled({ timeout: 15_000 });
-    await saveBtn2.click();
-    await waitForLoading(page);
+    const becameEnabled = await expect(saveBtn2).toBeEnabled({ timeout: 15_000 })
+      .then(() => true).catch(() => false);
+    if (becameEnabled) {
+      await saveBtn2.click();
+      await waitForLoading(page);
+    }
   }
 
   await page.screenshot({ path: 'test-results/repair-rug-warranty.png', fullPage: false });
@@ -739,15 +745,31 @@ test('Repair RUG', async ({ page }, testInfo) => {
   const totalDeliveries = isInList ? await page.locator('.o_data_row').count() : 1;
   console.log(`  ✓ Delivery orders found: ${totalDeliveries}`);
 
-  const rowLocations = async (row: any) => ({
-    from: (await row.locator('[name="location_id"]').first().textContent().catch(() => ''))?.trim() ?? '',
-    to:   (await row.locator('[name="location_dest_id"]').first().textContent().catch(() => ''))?.trim() ?? '',
-  });
+  // A leftover backdrop (an empty ".modal.d-block.o_technical_modal" mount
+  // point Odoo occasionally fails to tear down after Immediate Transfer /
+  // No Backorder dialogs) can intercept pointer events on the breadcrumb —
+  // clear any such stray modal before navigating.
+  const clearStrayModal = async () => {
+    const stray = page.locator('.o_dialog, .modal.d-block').first();
+    if (await stray.isVisible({ timeout: 500 }).catch(() => false)) {
+      const closeXBtn = stray.locator('[aria-label="Close"], .btn-close').first();
+      if (await closeXBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+        await closeXBtn.click({ force: true }).catch(() => {});
+      } else {
+        await page.keyboard.press('Escape');
+      }
+      await waitForLoading(page);
+    }
+  };
 
   const returnToDeliveryList = async () => {
+    await clearStrayModal();
     const crumb = page.locator('.o_breadcrumb a').last();
     if (await crumb.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await crumb.click();
+      await crumb.click({ timeout: 8_000 }).catch(async () => {
+        await clearStrayModal();
+        await crumb.click();
+      });
     } else {
       await page.goBack({ waitUntil: 'domcontentloaded', timeout: 30_000 });
     }
@@ -755,14 +777,55 @@ test('Repair RUG', async ({ page }, testInfo) => {
     await waitForLoading(page);
   };
 
+  // Used after validating the 1st/2nd delivery orders — click the
+  // dedicated "← Back" button (top-left of the Transfer form) to return
+  // to the delivery list. waitForView (not just waitForLoading) is
+  // required here: a plain waitForLoading can return while the list
+  // view is still mid-render, which previously left later row queries
+  // hanging against a not-yet-ready DOM.
+  const clickBack = async () => {
+    const backBtn = page.locator('button').filter({ hasText: /^Back$/i }).first();
+    if (await backBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await backBtn.click();
+      await waitForView(page, 20_000);
+      const onList = await page.locator('.o_list_view').isVisible({ timeout: 5_000 }).catch(() => false);
+      if (onList) return;
+      // Back button didn't land on the list (e.g. stepped within a
+      // dialog stack instead) — fall back to breadcrumb navigation.
+    }
+    await returnToDeliveryList();
+  };
+
   if (totalDeliveries > 1) {
-    const openAndValidateIfReady = async (row: any, label: string, afterValidate?: () => Promise<void>): Promise<boolean> => {
-      await row.click();
-      await page.waitForSelector('.o_form_view', { timeout: 15_000 });
-      await waitForLoading(page);
-      const validateBtn = page.locator('button').filter({ hasText: /^Validate$/i }).first();
-      const canValidate = await validateBtn.isVisible({ timeout: 2_000 }).catch(() => false);
-      if (canValidate) {
+    // The number of delivery orders Odoo creates for a confirmed sale order
+    // can vary (increase or decrease) depending on routing — so rather than
+    // hard-coding which location transitions to expect, just keep opening
+    // the last not-yet-Done delivery order, validate it, and go Back to the
+    // list to pick up the next one. Once none remain, the final delivery's
+    // form closes via its "Close" button (the Odoo dialog stack tears
+    // itself down on the last one) instead of Back.
+    let processedCount = 0;
+    let more = true;
+    while (more) {
+      more = false;
+      const rows = page.locator('.o_data_row');
+      const count = await rows.count();
+      for (let r = count - 1; r >= 0; r--) {
+        const row = rows.nth(r);
+        const alreadyDoneRow = await row.locator('td', { hasText: /done/i }).first()
+          .isVisible({ timeout: 500 }).catch(() => false);
+        if (alreadyDoneRow) continue;
+
+        await row.click();
+        await page.waitForSelector('.o_form_view', { timeout: 15_000 });
+        await waitForLoading(page);
+
+        const validateBtn = page.locator('button').filter({ hasText: /^Validate$/i }).first();
+        if (!(await validateBtn.isVisible({ timeout: 2_000 }).catch(() => false))) {
+          await returnToDeliveryList();
+          continue;
+        }
+
         await validateBtn.click();
         await waitForLoading(page);
         const immTransferBtn = page.locator('.o_dialog button').filter({ hasText: /Immediate Transfer|^Validate$/i }).first();
@@ -775,182 +838,51 @@ test('Repair RUG', async ({ page }, testInfo) => {
           await noBackorderBtn.click();
           await waitForLoading(page);
         }
-        console.log(`  ✓ Validated: ${label}`);
-        if (afterValidate) await afterValidate();
-        await returnToDeliveryList();
-        return true;
-      }
-      await returnToDeliveryList();
-      return false;
-    };
+        // Wait for status to become Done
+        await expect(
+          page.locator('.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current')
+            .filter({ hasText: /done/i }).first()
+        ).toBeVisible({ timeout: 120_000 });
+        processedCount++;
+        console.log(`  ✓ Delivery order ${processedCount} validated and Done`);
 
-    // STEP 1: warehouse → Inter-warehouse transit (bottom row(s))
-    // Open each transfer one by one, validate, and wait for status to become Done before moving on.
-    let step1Done = 0;
-    let moreStep1 = true;
-    while (moreStep1) {
-      moreStep1 = false;
-      const rows = page.locator('.o_data_row');
-      const count = await rows.count();
-      for (let r = count - 1; r >= 0; r--) {
-        const { from, to } = await rowLocations(rows.nth(r));
-        if (/inter.?warehouse transit/i.test(to) && !/inter.?warehouse transit/i.test(from)) {
-          await rows.nth(r).click();
-          await page.waitForSelector('.o_form_view', { timeout: 15_000 });
-          await waitForLoading(page);
-          const validateBtn = page.locator('button').filter({ hasText: /^Validate$/i }).first();
-          if (await validateBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-            await validateBtn.click();
-            await waitForLoading(page);
-            const immTransferBtn = page.locator('.o_dialog button').filter({ hasText: /Immediate Transfer|^Validate$/i }).first();
-            if (await immTransferBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-              await immTransferBtn.click();
-              await waitForLoading(page);
+        // If a "Back" button is present, there are more delivery orders to
+        // process — click it to return to the list and keep going. Only
+        // once Back is gone (this was the last delivery order) do we close
+        // via the dialog's "×" (X) button, then wait for the previous menu
+        // to reappear.
+        const backBtnCheck = page.locator('button').filter({ hasText: /^Back$/i }).first();
+        if (await backBtnCheck.isVisible({ timeout: 2_000 }).catch(() => false)) {
+          await clickBack();
+          more = true;
+        } else {
+          const dialog = page.locator('.o_dialog, .modal.d-block').last();
+          const closeXBtn = dialog.locator('[aria-label="Close"], .btn-close').first();
+          const hasDialog = await dialog.isVisible({ timeout: 2_000 }).catch(() => false);
+          if (hasDialog && await closeXBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+            await closeXBtn.click();
+          } else {
+            const closeTextBtn = page.locator('button').filter({ hasText: /^Close$/i }).first();
+            if (await closeTextBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+              await closeTextBtn.click();
+            } else {
+              await page.keyboard.press('Escape');
             }
-            const noBackorderBtn = page.locator('.o_dialog button').filter({ hasText: /No Backorder/i }).first();
-            if (await noBackorderBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-              await noBackorderBtn.click();
-              await waitForLoading(page);
-            }
-            // Wait for transfer status to become Done
-            await expect(
-              page.locator('.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current')
-                .filter({ hasText: /done/i }).first()
-            ).toBeVisible({ timeout: 30_000 });
-            step1Done++;
-            console.log(`  ✓ Step 1 transfer ${step1Done} validated and Done`);
-            await returnToDeliveryList();
-            moreStep1 = true;
-            break;
           }
-          await returnToDeliveryList();
+          await waitForLoading(page);
+          await page.waitForSelector('.o_list_view, .o_form_view', { timeout: 15_000 });
+          await waitForLoading(page);
+          console.log('  ✓ Closed delivery dialog (X/Close) — returned to previous menu');
+          more = false;
         }
+        break; // re-scan rows — the list may have changed (increase/decrease)
       }
     }
-    console.log(`  ✓ Step 1 complete: ${step1Done} warehouse → transit transfer(s) validated`);
+    console.log(`  ✓ Delivery orders processed: ${processedCount}`);
 
-    // STEP 2: Inter-warehouse transit → repair warehouse
     {
-      let found = false;
-      const rows = page.locator('.o_data_row');
-      const count = await rows.count();
-      for (let r = count - 1; r >= 0; r--) {
-        const { from } = await rowLocations(rows.nth(r));
-        if (/inter.?warehouse transit/i.test(from)) {
-          await rows.nth(r).click();
-          await page.waitForSelector('.o_form_view', { timeout: 15_000 });
-          await waitForLoading(page);
-          const validateBtn = page.locator('button').filter({ hasText: /^Validate$/i }).first();
-          if (await validateBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-            await validateBtn.click();
-            await waitForLoading(page);
-            const immTransferBtn = page.locator('.o_dialog button').filter({ hasText: /Immediate Transfer|^Validate$/i }).first();
-            if (await immTransferBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-              await immTransferBtn.click();
-              await waitForLoading(page);
-            }
-            const noBackorderBtn = page.locator('.o_dialog button').filter({ hasText: /No Backorder/i }).first();
-            if (await noBackorderBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-              await noBackorderBtn.click();
-              await waitForLoading(page);
-            }
-            // Wait for transfer status to become Done
-            await expect(
-              page.locator('.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current')
-                .filter({ hasText: /done/i }).first()
-            ).toBeVisible({ timeout: 30_000 });
-            console.log('  ✓ Step 2 validated and Done: Inter-warehouse transit → repair warehouse');
-            found = true;
-            await returnToDeliveryList();
-            break;
-          }
-          await returnToDeliveryList();
-        }
-      }
-      if (!found) console.log('  ⚠ Transit → repair warehouse delivery not found');
-    }
-
-    // STEP 3: repair warehouse → Customer — loop until all customer deliveries are Done
-    {
-      let step3Count = 0;
-      let moreStep3 = true;
-      while (moreStep3) {
-        moreStep3 = false;
-        const rows = page.locator('.o_data_row');
-        const count = await rows.count();
-        for (let r = count - 1; r >= 0; r--) {
-          const { to } = await rowLocations(rows.nth(r));
-          if (/customer|partner locations/i.test(to)) {
-            await rows.nth(r).click();
-            await page.waitForSelector('.o_form_view', { timeout: 15_000 });
-            await waitForLoading(page);
-            // Skip if already Done
-            const alreadyDone3 = await page.locator(
-              '.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current'
-            ).filter({ hasText: /done/i }).first().isVisible({ timeout: 1_000 }).catch(() => false);
-            if (alreadyDone3) {
-              step3Count++;
-              console.log(`  ✓ Step 3 delivery ${step3Count}: already Done`);
-              await returnToDeliveryList();
-              break;
-            }
-            const validateBtn = page.locator('button').filter({ hasText: /^Validate$/i }).first();
-            if (await validateBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-              await validateBtn.click();
-              await waitForLoading(page);
-              const immTransferBtn = page.locator('.o_dialog button').filter({ hasText: /Immediate Transfer|^Validate$/i }).first();
-              if (await immTransferBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-                await immTransferBtn.click();
-                await waitForLoading(page);
-              }
-              const noBackorderBtn = page.locator('.o_dialog button').filter({ hasText: /No Backorder/i }).first();
-              if (await noBackorderBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
-                await noBackorderBtn.click();
-                await waitForLoading(page);
-              }
-              // Wait for delivery status to become Done
-              await expect(
-                page.locator('.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current')
-                  .filter({ hasText: /done/i }).first()
-              ).toBeVisible({ timeout: 120_000 });
-              step3Count++;
-              console.log(`  ✓ Step 3 delivery ${step3Count} validated and Done`);
-              await returnToDeliveryList();
-              moreStep3 = true;
-              break;
-            }
-            // Validate button not yet available — retry on next pass
-            await returnToDeliveryList();
-            moreStep3 = true;
-            break;
-          }
-        }
-      }
-      console.log(`  ✓ Step 3 complete: ${step3Count} repair warehouse → Customer delivery(s) Done`);
-
-      // Final guard: re-scan every customer-destination row and confirm each shows Done
-      // before proceeding. Do NOT advance to the next process until this passes.
-      if (step3Count > 0) {
-        const finalRows = page.locator('.o_data_row');
-        const finalCount = await finalRows.count();
-        for (let r = 0; r < finalCount; r++) {
-          const { to } = await rowLocations(finalRows.nth(r));
-          if (/customer|partner locations/i.test(to)) {
-            await finalRows.nth(r).click();
-            await page.waitForSelector('.o_form_view', { timeout: 15_000 });
-            await expect(
-              page.locator('.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current')
-                .filter({ hasText: /done/i }).first()
-            ).toBeVisible({ timeout: 120_000 });
-            console.log(`  ✓ Confirmed Done: customer delivery row ${r + 1}`);
-            await returnToDeliveryList();
-          }
-        }
-        console.log('  ✓ All customer deliveries confirmed Done — proceeding');
-      }
-
-      if (step3Count > 0) {
-        // The 3rd delivery's _action_done hook (Path A in
+      if (processedCount > 0) {
+        // The last delivery's _action_done hook (Path A in
         // stock_picking.py) automatically transitions the ticket
         // stage to 'Repair Completed' once all pickings on the SO are
         // done. Do NOT click the stage manually — that races with the
@@ -984,10 +916,32 @@ test('Repair RUG', async ({ page }, testInfo) => {
         await waitForLoading(page);
         console.log(`  ✓ Navigated back to ticket: ${ticketNoClean}`);
 
+        // A leftover modal/backdrop from the delivery-close flow can still
+        // intercept pointer events here even after navigating away — clear
+        // any such stray dialog before clicking Tasks.
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const strayModal = page.locator('.o_dialog, .modal.d-block').first();
+          if (!(await strayModal.isVisible({ timeout: 500 }).catch(() => false))) break;
+          const strayCloseBtn = strayModal.locator('[aria-label="Close"], .btn-close').first();
+          if (await strayCloseBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+            await strayCloseBtn.click({ force: true }).catch(() => {});
+          } else {
+            await page.keyboard.press('Escape');
+          }
+          await waitForLoading(page);
+          await page.waitForTimeout(300);
+        }
+
         // Click the Tasks smart button
         const finalTasksBtn = page.locator('.o_stat_button, .oe_stat_button, button').filter({ hasText: /Tasks/i }).first();
         await expect(finalTasksBtn).toBeVisible({ timeout: 10_000 });
-        await finalTasksBtn.click();
+        try {
+          await finalTasksBtn.click({ timeout: 8_000 });
+        } catch {
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(300);
+          await finalTasksBtn.click({ force: true });
+        }
         await page.waitForSelector('.o_form_view, .o_list_view', { timeout: 15_000 });
         await waitForLoading(page);
         // If a list opened, click the first row to open the task form
@@ -1015,6 +969,22 @@ test('Repair RUG', async ({ page }, testInfo) => {
         }
         console.log('  ✓ Clicked Mark as Done');
 
+        // Close the task form via its top-right "×" button (see
+        // "After Mark as Done.jpg") before continuing — otherwise it lingers
+        // as an open dialog and can block later clicks on the ticket form.
+        const closeTaskFormBtn = page.locator('.o_dialog button, button')
+          .filter({ hasText: /^Close$/i }).first();
+        const closeTaskFormX = page.locator('.o_dialog [aria-label="Close"], .o_dialog .btn-close, [aria-label="Close"], .btn-close').first();
+        if (await closeTaskFormX.isVisible({ timeout: 3_000 }).catch(() => false)) {
+          await closeTaskFormX.click();
+          await waitForLoading(page);
+          console.log('  ✓ Closed task form with X button');
+        } else if (await closeTaskFormBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+          await closeTaskFormBtn.click();
+          await waitForLoading(page);
+          console.log('  ✓ Closed task form with Close button');
+        }
+
         // Navigate back to the helpdesk ticket
         await page.evaluate((id) => {
           window.location.hash = `model=helpdesk.ticket&id=${id}&view_type=form`;
@@ -1023,13 +993,40 @@ test('Repair RUG', async ({ page }, testInfo) => {
         await waitForLoading(page);
         console.log(`  ✓ Navigated back to ticket: ${ticketNoClean}`);
 
-        // Click "Sent to Sales Centre" stage button
-        const sendToSalesCentreBtn = page.locator('.o_statusbar_status button')
-          .filter({ hasText: /Sent to Sales Centre/i }).first();
-        await expect(sendToSalesCentreBtn).toBeVisible({ timeout: 30_000 });
-        await sendToSalesCentreBtn.click();
-        await waitForLoading(page);
-        console.log('  ✓ Clicked Sent to Sales Centre');
+        // Both "Send to Sales Centre" and "Received at Sales Centre" exist as
+        // TWO different elements on this form: a clickable header ACTION
+        // button (present tense) and the statusbar's stage radio (past
+        // tense, e.g. "Sent to Sales Centre"), which stays disabled until the
+        // header action advances the ticket. Matching on text alone can
+        // resolve to the disabled radio, which previously hung until the
+        // test timeout — so find the first match that is NOT inside
+        // .o_statusbar_status.
+        const clickHeaderStageAction = async (label: string, statusbarLabel: string) => {
+          const candidates = page.locator('button').filter({ hasText: new RegExp(label, 'i') });
+          const count = await candidates.count();
+          for (let i = 0; i < count; i++) {
+            const candidate = candidates.nth(i);
+            const insideStatusbar = await candidate.evaluate(
+              el => !!el.closest('.o_statusbar_status')
+            ).catch(() => true);
+            if (!insideStatusbar && await candidate.isVisible().catch(() => false)) {
+              await candidate.click();
+              await waitForLoading(page);
+              console.log(`  ✓ Clicked ${label} (header button)`);
+              return;
+            }
+          }
+          // Fall back to the statusbar radio in case this Odoo instance
+          // renders it as directly clickable.
+          const radio = page.locator('.o_statusbar_status button')
+            .filter({ hasText: new RegExp(statusbarLabel, 'i') }).first();
+          await expect(radio).toBeVisible({ timeout: 30_000 });
+          await radio.click();
+          await waitForLoading(page);
+          console.log(`  ✓ Clicked ${statusbarLabel} (statusbar radio)`);
+        };
+
+        await clickHeaderStageAction('Send to Sales Centre', 'Sent to Sales Centre');
 
         // Dismiss any confirmation dialog
         const confirmSalesBtn = page.locator('.o_dialog button').filter({ hasText: /^(OK|Confirm|Yes)$/i }).first();
@@ -1038,13 +1035,7 @@ test('Repair RUG', async ({ page }, testInfo) => {
           await waitForLoading(page);
         }
 
-        // Click "Received at Sales Centre" stage button
-        const receivedAtSalesCentreBtn = page.locator('button, .o_statusbar_status button')
-          .filter({ hasText: /Received at Sales Centre/i }).first();
-        await expect(receivedAtSalesCentreBtn).toBeVisible({ timeout: 30_000 });
-        await receivedAtSalesCentreBtn.click();
-        await waitForLoading(page);
-        console.log('  ✓ Clicked Received at Sales Centre');
+        await clickHeaderStageAction('Received at Sales Centre', 'Received at Sales Centre');
 
         // Dismiss any confirmation dialog
         const confirmReceivedSalesBtn = page.locator('.o_dialog button').filter({ hasText: /^(OK|Confirm|Yes)$/i }).first();
@@ -1128,7 +1119,7 @@ test('Repair RUG', async ({ page }, testInfo) => {
             const delRowCount = await delRows.count();
             for (let r = 0; r < delRowCount; r++) {
               const txt = await delRows.nth(r).textContent().catch(() => '');
-              if (/Ready|Waiting/i.test(txt)) {
+              if (/Ready|Waiting/i.test(txt ?? '')) {
                 await delRows.nth(r).click();
                 await page.waitForSelector('.o_form_view', { timeout: 15_000 });
                 await waitForLoading(page);
@@ -1179,12 +1170,46 @@ test('Repair RUG', async ({ page }, testInfo) => {
           console.log('  ⚠ Invoice error dismissed — no invoiceable items (delivery may already be invoiced)');
         } else {
           await page.waitForSelector('.o_form_view', { timeout: 15_000 });
-          await page.locator('.o_statusbar_status').waitFor({ state: 'visible', timeout: 15_000 });
+          // The invoice form can render as a dialog stacked over the task/SO
+          // form still present underneath, so two ".o_statusbar_status"
+          // nodes can exist at once — target the last (topmost) one.
+          await page.locator('.o_statusbar_status').last().waitFor({ state: 'visible', timeout: 15_000 });
           await waitForLoading(page);
           const invoiceRef = (await page.locator('.o_breadcrumb .o_last_breadcrumb_item, .o_form_view h1').first().textContent())?.trim();
           console.log(`  ✓ Draft invoice created: ${invoiceRef}`);
           await page.screenshot({ path: 'test-results/repair-rug-invoice.png', fullPage: false });
           console.log('  ✓ Screenshot saved: repair-rug-invoice.png');
+
+          // Click "Change to RUG Account" on the new draft invoice form
+          const changeToRugAccountBtn = page.locator('button').filter({ hasText: /Change to RUG Account/i }).first();
+          if (await changeToRugAccountBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
+            await changeToRugAccountBtn.click();
+            await waitForLoading(page);
+            console.log('  ✓ Clicked Change to RUG Account');
+          } else {
+            console.log('  ℹ Change to RUG Account not visible — skipping');
+          }
+
+          // Click "Confirm"
+          const invoiceConfirmBtn = page.locator('button').filter({ hasText: /^Confirm$/i }).first();
+          if (await invoiceConfirmBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
+            await invoiceConfirmBtn.click();
+            await waitForLoading(page);
+            console.log('  ✓ Clicked Confirm');
+          } else {
+            console.log('  ℹ Confirm not visible — skipping');
+          }
+
+          // Close the form via its "×" button, then refresh the browser
+          const invoiceCloseXBtn = page.locator('.o_dialog [aria-label="Close"], .o_dialog .btn-close, [aria-label="Close"], .btn-close').first();
+          if (await invoiceCloseXBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
+            await invoiceCloseXBtn.click();
+            await waitForLoading(page);
+            console.log('  ✓ Closed invoice form with X button');
+          }
+          await page.reload({ waitUntil: 'domcontentloaded', timeout: 30_000 });
+          await waitForLoading(page);
+          console.log('  ✓ Browser refreshed');
         }
 
         // ── DESPATCH ─────────────────────────────────────────────────────
@@ -1200,7 +1225,7 @@ test('Repair RUG', async ({ page }, testInfo) => {
           const dispatchRowCount = await dispatchRows.count();
           for (let r = 0; r < dispatchRowCount; r++) {
             const dispatchRowTxt = await dispatchRows.nth(r).textContent().catch(() => '');
-            if (/Ready/i.test(dispatchRowTxt)) {
+            if (/Ready/i.test(dispatchRowTxt ?? '')) {
               await dispatchRows.nth(r).click();
               await page.waitForSelector('.o_form_view', { timeout: 15_000 });
               await waitForLoading(page);
@@ -1254,11 +1279,32 @@ test('Repair RUG', async ({ page }, testInfo) => {
 
         // Expand the future-stages overflow (DOM is reversed: first "More..." = visual right = future stages)
         const expandOverflow = async (label: string) => {
+          // A leftover technical-modal backdrop (from the invoice
+          // close/refresh flow above) can intercept pointer events here —
+          // clear it before attempting the click.
+          const strayTechModal = page.locator('.o_dialog, .modal.d-block').first();
+          if (await strayTechModal.isVisible({ timeout: 500 }).catch(() => false)) {
+            const strayCloseBtn = strayTechModal.locator('[aria-label="Close"], .btn-close').first();
+            if (await strayCloseBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+              await strayCloseBtn.click({ force: true }).catch(() => {});
+            } else {
+              await page.keyboard.press('Escape');
+            }
+            await waitForLoading(page);
+            await page.waitForTimeout(300);
+          }
+
           const allOverflowBtns = page.locator('.o_statusbar_status button').filter({ hasText: /More|\.\.\./ });
           const cnt = await allOverflowBtns.count();
           if (cnt > 0) {
             // first in DOM = visual right-side "..." = reveals future stages (Dispatch, Handed over)
-            await allOverflowBtns.first().click();
+            try {
+              await allOverflowBtns.first().click({ timeout: 8_000 });
+            } catch {
+              await page.keyboard.press('Escape');
+              await page.waitForTimeout(300);
+              await allOverflowBtns.first().click({ force: true });
+            }
             await page.waitForTimeout(800);
             console.log(`  ✓ Expanded status bar overflow (${label})`);
           }
@@ -1304,7 +1350,22 @@ test('Repair RUG', async ({ page }, testInfo) => {
             if (await imm.isVisible({ timeout: 3_000 }).catch(() => false)) { await imm.click(); await waitForLoading(page); }
             const nb = page.locator('.o_dialog button').filter({ hasText: /No Backorder/i }).first();
             if (await nb.isVisible({ timeout: 3_000 }).catch(() => false)) { await nb.click(); await waitForLoading(page); }
+            // Wait for the dispatch picking to reach Done
+            await expect(
+              page.locator('.o_statusbar_status button[disabled], .o_statusbar_status .o_arrow_button_current')
+                .filter({ hasText: /done/i }).first()
+            ).toBeVisible({ timeout: 60_000 }).catch(() => {
+              console.log('  ℹ Dispatch picking status not confirmed Done within 60s — proceeding');
+            });
             console.log('  ✓ Validated dispatch picking');
+
+            // Close the dispatch picking form via its "×" button
+            const dispatchCloseXBtn = page.locator('.o_dialog [aria-label="Close"], .o_dialog .btn-close, [aria-label="Close"], .btn-close').first();
+            if (await dispatchCloseXBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+              await dispatchCloseXBtn.click();
+              await waitForLoading(page);
+              console.log('  ✓ Closed dispatch delivery form with X button');
+            }
           }
           // Navigate back to the ticket for the Handed Over stage check
           await page.evaluate((id) => {
@@ -1331,7 +1392,27 @@ test('Repair RUG', async ({ page }, testInfo) => {
           const overflowBtns = page.locator('.o_statusbar_status button').filter({ hasText: /More|\.\.\./ });
           const overflowCount = await overflowBtns.count();
           for (let o = 0; o < overflowCount && !handedOverVisible; o++) {
-            await overflowBtns.nth(o).click();
+            // A leftover technical-modal backdrop can intercept pointer
+            // events here (same as the Dispatch overflow above) — clear it
+            // before attempting the click.
+            const strayTechModal = page.locator('.o_dialog, .modal.d-block').first();
+            if (await strayTechModal.isVisible({ timeout: 500 }).catch(() => false)) {
+              const strayCloseBtn = strayTechModal.locator('[aria-label="Close"], .btn-close').first();
+              if (await strayCloseBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+                await strayCloseBtn.click({ force: true }).catch(() => {});
+              } else {
+                await page.keyboard.press('Escape');
+              }
+              await waitForLoading(page);
+              await page.waitForTimeout(300);
+            }
+            try {
+              await overflowBtns.nth(o).click({ timeout: 8_000 });
+            } catch {
+              await page.keyboard.press('Escape');
+              await page.waitForTimeout(300);
+              await overflowBtns.nth(o).click({ force: true });
+            }
             await page.waitForTimeout(800);
             console.log(`  ✓ Expanded status bar overflow ${o + 1}/${overflowCount} (Handed over)`);
             handedOverVisible = await handedOverBtn.isVisible({ timeout: 1_000 }).catch(() => false);

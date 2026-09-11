@@ -5,7 +5,7 @@
       "value": "en_US",
       "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
       "path": "/",
-      "expires": 1818149725.96829,
+      "expires": 1820640821.372112,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -25,17 +25,17 @@
       "value": "[\"/web/login\"]",
       "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
       "path": "/",
-      "expires": 1786700127.394586,
+      "expires": 1789191222.773351,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
     },
     {
       "name": "session_id",
-      "value": "246374c08df5cfddd945208c9e3b2519775ecc5d",
+      "value": "e4c5777226c5ca248608e864470667e6d6d1e783",
       "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
       "path": "/",
-      "expires": 1787218528.927624,
+      "expires": 1789709623.34838,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -45,7 +45,7 @@
       "value": "2",
       "domain": "rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com",
       "path": "/",
-      "expires": 1818149730.468088,
+      "expires": 1820640824.684001,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -61,7 +61,7 @@
         },
         {
           "name": "presence.lastPresence",
-          "value": "1786613727436"
+          "value": "1789104822822"
         },
         {
           "name": "multi_tab.https_rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com.main",
@@ -69,7 +69,11 @@
         },
         {
           "name": "multi_tab.https_rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com.heartbeat",
-          "value": "1786613731971"
+          "value": "1789104826189"
+        },
+        {
+          "name": "multi_tab.https_rohanabalagalla-jinstage-clear-db-36338388.dev.odoo.com.last_notification_id",
+          "value": "317819"
         },
         {
           "name": "presence.focus",

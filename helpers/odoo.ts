@@ -6,6 +6,42 @@ dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 export const BASE_URL = (process.env.ODOO_URL || '').replace(/\/$/, '');
 
+/**
+ * Injects a fixed, blinking banner at the bottom of the page showing the
+ * given test name. Uses page.addInitScript so it re-injects itself on
+ * every navigation/reload for the lifetime of this `page` — call it once,
+ * near the top of a test, right after `page` is available.
+ */
+export async function showTestNameBanner(page: Page, testName: string): Promise<void> {
+  await page.addInitScript((name: string) => {
+    const render = () => {
+      if (!document.body) { requestAnimationFrame(render); return; }
+      const existing = document.getElementById('__pw_test_name_banner__');
+      if (existing) existing.remove();
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes pw-test-name-blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.15; } }
+        #__pw_test_name_banner__ {
+          position: fixed; left: 0; right: 0; bottom: 0; z-index: 2147483647;
+          background: #90ee90; color: #000; font: bold 14px/1.4 sans-serif;
+          text-align: center; padding: 6px 10px; pointer-events: none;
+        }
+        #__pw_test_name_banner__ span {
+          animation: pw-test-name-blink 1s steps(1, end) infinite;
+        }
+      `;
+      const banner = document.createElement('div');
+      banner.id = '__pw_test_name_banner__';
+      const label = document.createElement('span');
+      label.textContent = `▶ Running: ${name}`;
+      banner.appendChild(label);
+      document.head.appendChild(style);
+      document.body.appendChild(banner);
+    };
+    render();
+  }, testName);
+}
+
 export async function loginAndSelectCompany(page: Page): Promise<void> {
   const email = process.env.ODOO_EMAIL || '';
   const password = process.env.ODOO_PASSWORD || '';
@@ -45,7 +81,23 @@ export async function waitForLoading(
   timeoutMs = 60_000,
   graceMs = 1_000,
 ): Promise<void> {
-  const indicatorVisibleNow = () => page.evaluate(() => {
+  // Wrapped so a transient "execution context was destroyed" error (page is
+  // mid-navigation when we poll) doesn't blow up the whole wait — we just
+  // treat that instant as "still loading" and re-check on the next tick.
+  // If the page/context is actually gone, rethrow so the caller fails fast
+  // instead of polling pointlessly until timeoutMs.
+  const indicatorVisibleNow = async (): Promise<boolean> => {
+    try {
+      return await evalIndicatorVisible();
+    } catch (err: any) {
+      if (page.isClosed()) throw err;
+      const msg = String(err?.message ?? '');
+      if (/context (was )?destroyed|Execution context/i.test(msg)) return true;
+      throw err;
+    }
+  };
+
+  const evalIndicatorVisible = () => page.evaluate(() => {
     const w = window as any;
     // Standard Odoo 17 selector
     const indicator = document.querySelector('.o_loading_indicator');
