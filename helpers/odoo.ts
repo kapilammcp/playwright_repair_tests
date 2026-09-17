@@ -224,8 +224,12 @@ export async function fillMany2one(page: Page, fieldName: string, value: string)
 
 export async function fillMany2oneByLabel(page: Page, labelText: string, value: string): Promise<void> {
   const fieldName = await page.evaluate((label: string) => {
+    // Strip trailing tooltip markers (e.g. a "?" help-icon glyph) and
+    // whitespace before comparing — some labels render as "Product ?"
+    // in the DOM, which broke a strict equality match.
+    const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+$/i, '');
     for (const el of Array.from(document.querySelectorAll('.o_form_label, label'))) {
-      if ((el.textContent ?? '').trim().toLowerCase() === label.toLowerCase()) {
+      if (normalize(el.textContent ?? '') === normalize(label)) {
         const forId = el.getAttribute('for');
         if (forId) {
           const widget = document.getElementById(forId)?.closest('[name]');
@@ -263,8 +267,9 @@ export async function fillMany2oneByLabel(page: Page, labelText: string, value: 
 
 export async function selectFirstDropdownByLabel(page: Page, labelText: string): Promise<string> {
   const fieldName = await page.evaluate((label: string) => {
+    const normalize = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]+$/i, '');
     for (const el of Array.from(document.querySelectorAll('.o_form_label, label'))) {
-      if ((el.textContent ?? '').trim().toLowerCase() === label.toLowerCase()) {
+      if (normalize(el.textContent ?? '') === normalize(label)) {
         const forId = el.getAttribute('for');
         if (forId) {
           const widget = document.getElementById(forId)?.closest('[name]');
